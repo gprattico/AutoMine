@@ -1,5 +1,7 @@
 package com.automine;
 
+import java.util.concurrent.TimeUnit;
+
 public class Main {
 
     public static final String MINE_LOC = "MINE_LOC";
@@ -18,6 +20,23 @@ public class Main {
         if (ethMiner.IsRunning()){
             System.out.println("Found miner "+ethMiner.getMinerExecutableName()+" already running.");
             ethMiner.killCurrentRunningMiner();
+        }
+
+        Runtime.getRuntime().addShutdownHook(new Thread(ethMiner::killCurrentRunningMiner));
+        // start miner ourselves
+        boolean programNotCancelled = true;
+        while (programNotCancelled){
+            if(!ethMiner.IsRunning())
+                ethMiner.start();
+
+            try {
+                TimeUnit.SECONDS.sleep(5);
+            } catch (InterruptedException e) {
+                System.out.println("An error occurred while we were checking the status of the miner.");
+                Main.endProgram(-1);
+            }
+
+            System.out.println("Miner running ...");
         }
 
 

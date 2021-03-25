@@ -4,6 +4,7 @@ import com.automine.exception.MinerNotKillableException;
 
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.nio.file.Files;
 import java.nio.file.Paths;
@@ -13,12 +14,12 @@ import java.util.concurrent.TimeUnit;
 public class Miner {
 
     private final String minerDirectory;
-    private final String minerFileName;
+    private final String batchFileName;
     private final String minerExecutableName;
 
-    public Miner (String minerDirectory, String minerFileName, String minerExecutableName){
+    public Miner (String minerDirectory, String batchFileName, String minerExecutableName){
         this.minerDirectory = minerDirectory;
-        this.minerFileName  = minerFileName;
+        this.batchFileName = batchFileName;
         this.minerExecutableName = minerExecutableName;
     }
 
@@ -41,9 +42,9 @@ public class Miner {
                     "set to: " + this.minerDirectory);
             return false;
         }
-        else if (!(new File(minerDirectory + File.separator + minerFileName).exists())){
+        else if (!(new File(minerDirectory + File.separator + batchFileName).exists())){
             System.out.println("Could not find the batch file for the miner,\n" +
-                    "because the file "+minerFileName+" does not exist in folder\n" +
+                    "because the file "+ batchFileName +" does not exist in folder\n" +
                     minerDirectory +
                     "\nMake sure environment variable " + Main.MINE_LOC + " is correctly set");
             return false;
@@ -96,7 +97,21 @@ public class Miner {
         }
     }
 
-    public Object getMinerExecutableName() {
+    public String getMinerExecutableName() {
         return minerExecutableName;
+    }
+
+    public void start() {
+        try {
+            ProcessBuilder pb = new ProcessBuilder("cmd.exe", "/c", "start", "\"AutoMine\"", batchFileName);
+            pb.directory(new File(this.minerDirectory));
+            pb.start();
+
+            //Runtime.getRuntime().exec("cmd /k start \"AutoMine\" " + minerDirectory + File.separator + batchFileName);
+        }
+        catch (IOException e){
+            System.err.println("Could not start the miner, file "+this.batchFileName+" is in use or unavailable.");
+            Main.endProgram(-1);
+        }
     }
 }
