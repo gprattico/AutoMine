@@ -1,6 +1,7 @@
 package com.automine;
 
 import com.automine.exception.MinerNotKillableException;
+import com.automine.overclocker.MSIAfterburner;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -13,14 +14,18 @@ import java.util.concurrent.TimeUnit;
 
 public class Miner {
 
+    private static final String CMD_EXE_NAME = "cmd.exe";
+    private static final int TIME_FOR_DAG_TO_GEN = 20;
     private final String minerDirectory;
     private final String batchFileName;
     private final String minerExecutableName;
+    private final MSIAfterburner overclocker;
 
-    public Miner (String minerDirectory, String batchFileName, String minerExecutableName){
+    public Miner (String minerDirectory, String batchFileName, String minerExecutableName, MSIAfterburner overclocker){
         this.minerDirectory = minerDirectory;
         this.batchFileName = batchFileName;
         this.minerExecutableName = minerExecutableName;
+        this.overclocker = overclocker;
     }
 
     /**
@@ -31,6 +36,7 @@ public class Miner {
      * false if the miner file cannot be found or doesn't exist
      */
     public boolean validateLocation() {
+        System.out.println("Checking environment variable "+Main.MINE_LOC);
         if (minerDirectory == null || minerDirectory.isEmpty()) {
             System.out.println("Environment variable " + Main.MINE_LOC + " is not set or is empty, please set it.");
             return false;
@@ -84,12 +90,19 @@ public class Miner {
         try {
             System.out.println("Attempting to kill currently running miner "+ minerExecutableName);
             Runtime.getRuntime().exec("taskkill /F /IM "+ minerExecutableName);
+
+            //clean running cmd.exe
+            Runtime.getRuntime().exec("taskkill /F /FI \"WINDOWTITLE eq AutoMine_cmd*\"");
+            Runtime.getRuntime().exec("taskkill /F /FI \"WINDOWTITLE eq AutoMine_cmd\"");
+
             TimeUnit.SECONDS.sleep(5);
 
             if (IsRunning())
                 throw new MinerNotKillableException();
             else
                 System.out.println("Process killed successfully.");
+
+            overclocker.setDefaultSettings();
         }
         catch (Exception e){
             System.err.println("Could not kill Miner "+ minerExecutableName +", please kill with task manager.");
@@ -103,15 +116,26 @@ public class Miner {
 
     public void start() {
         try {
-            ProcessBuilder pb = new ProcessBuilder("cmd.exe", "/c", "start", "\"AutoMine\"", batchFileName);
+            overclocker.setDefaultSettings();
+            ProcessBuilder pb = new ProcessBuilder("cmd.exe", "/c", "start", "\"AutoMine_cmd\"", batchFileName);
             pb.directory(new File(this.minerDirectory));
             pb.start();
-
-            //Runtime.getRuntime().exec("cmd /k start \"AutoMine\" " + minerDirectory + File.separator + batchFileName);
+            System.out.println("Starting miner...");
+            System.out.println("Waiting "+TIME_FOR_DAG_TO_GEN+" seconds to set overclocked settings.");
+            TimeUnit.SECONDS.sleep(TIME_FOR_DAG_TO_GEN);
+            overclocker.setOverclockSettings();
         }
         catch (IOException e){
             System.err.println("Could not start the miner, file "+this.batchFileName+" is in use or unavailable.");
             Main.endProgram(-1);
         }
+        catch (InterruptedException e){
+            System.err.println("An error occurred while waiting for the DAG to generate.");
+            Main.endProgram(-1);
+        }
+    }
+
+    public boolean hasProblem() {
+        return true;
     }
 }

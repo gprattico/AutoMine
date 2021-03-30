@@ -1,5 +1,10 @@
 package com.automine;
 
+import com.automine.overclocker.MSIAfterburner;
+import sun.misc.Signal;
+
+import java.time.LocalTime;
+import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
 
 public class Main {
@@ -8,12 +13,10 @@ public class Main {
     public static final String ETH_MINER_NAME = "lolMiner.exe";
     private static final String ETH_BATCH_NAME = "mine_eth.bat";
 
-
     public static void main(String[] args) {
         System.out.println("Welcome to AutoMine "+System.getProperty("user.name"));
-        System.out.println("Checking environment variable "+MINE_LOC);
 
-        Miner ethMiner = new Miner(System.getenv("MINE_LOC"), ETH_BATCH_NAME, ETH_MINER_NAME);
+        Miner ethMiner = new Miner(System.getenv("MINE_LOC"), ETH_BATCH_NAME, ETH_MINER_NAME, new MSIAfterburner());
 
         if(!ethMiner.validateLocation()) endProgram(-1);
 
@@ -22,25 +25,45 @@ public class Main {
             ethMiner.killCurrentRunningMiner();
         }
 
-        Runtime.getRuntime().addShutdownHook(new Thread(ethMiner::killCurrentRunningMiner));
+        addShutdownListeners(ethMiner);
+
+
+        DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm");
         // start miner ourselves
-        boolean programNotCancelled = true;
-        while (programNotCancelled){
-            if(!ethMiner.IsRunning())
+        boolean cancelled = false;
+        while (!cancelled){
+            if(!ethMiner.IsRunning()) {
                 ethMiner.start();
+            }
 
             try {
-                TimeUnit.SECONDS.sleep(5);
+                System.out.println(LocalTime.now().format(dtf)+" Miner running ...");
+
+                //edit this one for sleep delay between resets
+                //TimeUnit.HOURS.sleep(2);
+                TimeUnit.MINUTES.sleep(2);
             } catch (InterruptedException e) {
                 System.out.println("An error occurred while we were checking the status of the miner.");
                 Main.endProgram(-1);
             }
 
-            System.out.println("Miner running ...");
+            if (ethMiner.hasProblem()) {
+                System.out.println("Found a problem with the miner, killing it.");
+                ethMiner.killCurrentRunningMiner();
+            }
         }
 
 
         endProgram(0);
+    }
+
+    private static void addShutdownListeners(Miner ethMiner) {
+        //this is for control c
+        Signal.handle(new Signal("INT"), signal -> {
+            System.out.println("Interrupted by ctrl c");
+            if (ethMiner.IsRunning()) ethMiner.killCurrentRunningMiner();
+            endProgram(0);
+        });
     }
 
     public static void endProgram(int statusCode){
