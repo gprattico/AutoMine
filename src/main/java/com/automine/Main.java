@@ -10,8 +10,12 @@ import java.util.concurrent.TimeUnit;
 public class Main {
 
     public static final String MINE_LOC = "MINE_LOC";
+    public static final Long hoursBetweenResets = 1L;
     public static final String ETH_MINER_NAME = "lolMiner.exe";
     private static final String ETH_BATCH_NAME = "mine_eth.bat";
+
+    public static long applicationStartTime;
+
 
     public static void main(String[] args) {
         System.out.println("Welcome to AutoMine "+System.getProperty("user.name"));
@@ -29,6 +33,9 @@ public class Main {
 
 
         DateTimeFormatter dtf = DateTimeFormatter.ofPattern("HH:mm");
+
+        applicationStartTime = System.currentTimeMillis();
+
         // start miner ourselves
         boolean cancelled = false;
         while (!cancelled){
@@ -39,7 +46,7 @@ public class Main {
             try {
                 System.out.println(LocalTime.now().format(dtf)+" Miner running ...");
 
-                //edit this one for sleep delay between resets
+                //edit this one for sleep delay between status checks
                 //TimeUnit.HOURS.sleep(2);
                 TimeUnit.MINUTES.sleep(2);
             } catch (InterruptedException e) {
@@ -47,12 +54,13 @@ public class Main {
                 Main.endProgram(-1);
             }
 
-            if (ethMiner.hasProblem()) {
-                System.out.println("Found a problem with the miner, killing it.");
+            System.out.println("Checking status of miner.");
+
+            if (ethMiner.shouldBeReset()) {
+                System.out.println(hoursBetweenResets+ " hour(s) passed, restarting Miner.");
                 ethMiner.killCurrentRunningMiner();
             }
         }
-
 
         endProgram(0);
     }

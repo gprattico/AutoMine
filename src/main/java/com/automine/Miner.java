@@ -14,7 +14,6 @@ import java.util.concurrent.TimeUnit;
 
 public class Miner {
 
-    private static final String CMD_EXE_NAME = "cmd.exe";
     private static final int TIME_FOR_DAG_TO_GEN = 20;
     private final String minerDirectory;
     private final String batchFileName;
@@ -36,7 +35,7 @@ public class Miner {
      * false if the miner file cannot be found or doesn't exist
      */
     public boolean validateLocation() {
-        System.out.println("Checking environment variable "+Main.MINE_LOC);
+        System.out.println("Checking environment variable "+ Main.MINE_LOC);
         if (minerDirectory == null || minerDirectory.isEmpty()) {
             System.out.println("Environment variable " + Main.MINE_LOC + " is not set or is empty, please set it.");
             return false;
@@ -135,7 +134,18 @@ public class Miner {
         }
     }
 
-    public boolean hasProblem() {
-        return true;
+    public boolean shouldBeReset() {
+
+        long currentTime = System.currentTimeMillis();
+        long _1hour = TimeUnit.HOURS.toMillis(Main.hoursBetweenResets);
+
+        if (currentTime >=  Main.applicationStartTime + _1hour){
+
+            //update the reference starting time
+            Main.applicationStartTime = System.currentTimeMillis();
+            return true;
+        }
+
+        return false;
     }
 }
